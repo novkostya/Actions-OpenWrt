@@ -1,0 +1,91 @@
+#!/bin/sh
+# etcgit — Git wrapper for OpenWrt upperdir only
+# Repo & worktree: /overlay/upper/etc
+
+set -e
+
+ETC="/overlay/upper/etc"
+
+need_git() { command -v git >/dev/null 2>&1 || { echo "git not found"; exit 1; }; }
+ensure_dir() { [ -d "$ETC" ] || mkdir -p "$ETC"; }
+
+cmd_init() {
+  # etcgit init [remote-url]
+  need_git; ensure_dir
+  if [ ! -d "$ETC/.git" ]; then
+    ( cd "$ETC" && git init )
+    [ -f "$ETC/.gitignore" ] || cat <<EOF >"$ETC/.gitignore"
+board.json
+urandom.seed
+*.opkg-*
+opkg-lists/
+.uci-*
+*~
+*.swp
+*.
+EOF
+    git -C "$ETC" config user.name  "etcgit"
+    git -C "$ETC" config user.email "root@openwrt"
+    git -C "$ETC" add -A
+    git -C "$ETC" commit -m "etcgit: initial snapshot" || true
+  fi
+  if [ -n "$1" ]; then
+    if git -C "$ETC" remote | grep -qx origin; then
+      git -C "$ETC" remote set-url origin "$1"
+    else
+      git -C "$ETC" remote add origin "$1"
+    fi
+  fi
+  echo "Initialized repo for /etc configs"
+}
+
+cmd_import() {
+  # etcgit import <remote-url>
+  need_git; ensure_dir
+  REMOTE="$1"
+  [ -n "$REMOTE" ] || { echo "usage: etcgit import <remote-url>"; exit 1; }
+
+  TMP="$(mktemp -d /tmp/etcgit.XXXXXX)"
+  # shallow clone to tmp so origin/HEAD is set by git itself
+  git clone --depth=1 "$REMOTE" "$TMP"
+
+  # nuke current upperdir content (including dotfiles) and replace with clone
+  #find "$ETC" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+  #( cd "$TMP" && tar -cf - . ) | ( cd "$ETC" && tar -xf - )
+  mv "$TMP/.git" "$ETC/"
+  git -C "$ETC" reset --hard
+  git -C "$ETC" clean -df
+
+  # basic identity (if not present)
+  git -C "$ETC" config user.name  >/dev/null || git -C "$ETC" config user.name "etcgit"
+  git -C "$ETC" config user.email >/dev/null || git -C "$ETC" config user.email "root@openwrt"
+
+  # cleanup
+  rm -rf "$TMP"
+
+  echo "Imported configs into /etc from $REMOTE"
+  echo "⚠️  Reboot is strongly recommended now so all services reload new configs."
+}
+
+usage() {
+  cat <<EOF
+etcgit — Git wrapper for /etc configs
+
+Commands:
+  init [remote-url]   Initialize repo (optional: set origin)
+  import <remote-url> Fetch configs into /etc from remote (via tmp clone)
+
+All other args are proxied to: git -C /overlay/upper/etc <args>
+Examples:
+  etcgit status
+  etcgit add -A && etcgit commit -m "tweak configs"
+  etcgit push origin main
+EOF
+}
+
+case "$1" in
+  init) shift; cmd_init "$@";;
+  import) shift; cmd_import "$@";;
+  ""|help|-h|--help) usage;;
+  *) need_git; ensure_dir; git -C "$ETC" "$@";;
+esac
