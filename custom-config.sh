@@ -20,5 +20,8 @@ CONFIG_PACKAGE_amneziawg-tools=y
 CONFIG_PACKAGE_git=y
 CONFIG_PACKAGE_openssh-client=y
 CONFIG_PACKAGE_ca-bundle=y
+CONFIG_PACKAGE_vim=y
+CONFIG_PACKAGE_less=y
+CONFIG_PACKAGE_bash=y
 
 EOF
