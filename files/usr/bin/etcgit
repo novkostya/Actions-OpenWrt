@@ -9,6 +9,12 @@ ETC="/overlay/upper/etc"
 need_git() { command -v git >/dev/null 2>&1 || { echo "git not found"; exit 1; }; }
 ensure_dir() { [ -d "$ETC" ] || mkdir -p "$ETC"; }
 
+setup_git_config() {
+  git -C "$ETC" config user.name  >/dev/null || git -C "$ETC" config user.name "etcgit"
+  git -C "$ETC" config user.email >/dev/null || git -C "$ETC" config user.email "root@openwrt"
+  git -C "$ETC" config core.worktree "$ETC"
+}
+
 cmd_init() {
   # etcgit init [remote-url]
   need_git; ensure_dir
@@ -27,8 +33,7 @@ opkg-lists/
 *.swp
 *.
 EOF
-    git -C "$ETC" config user.name  "etcgit"
-    git -C "$ETC" config user.email "root@openwrt"
+    setup_git_config
     git -C "$ETC" add -A
     git -C "$ETC" commit -m "etcgit: initial snapshot" || true
   fi
@@ -53,15 +58,10 @@ cmd_import() {
   git clone --depth=1 "$REMOTE" "$TMP"
 
   # nuke current upperdir content (including dotfiles) and replace with clone
-  #find "$ETC" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
-  #( cd "$TMP" && tar -cf - . ) | ( cd "$ETC" && tar -xf - )
   mv "$TMP/.git" "$ETC/"
   git -C "$ETC" reset --hard
   git -C "$ETC" clean -df
-
-  # basic identity (if not present)
-  git -C "$ETC" config user.name  >/dev/null || git -C "$ETC" config user.name "etcgit"
-  git -C "$ETC" config user.email >/dev/null || git -C "$ETC" config user.email "root@openwrt"
+  setup_git_config
 
   # cleanup
   rm -rf "$TMP"
