@@ -17,6 +17,9 @@ cmd_init() {
     [ -f "$ETC/.gitignore" ] || cat <<EOF >"$ETC/.gitignore"
 board.json
 urandom.seed
+passwd-
+shadow-
+gshadow-
 *.opkg-*
 opkg-lists/
 .uci-*
