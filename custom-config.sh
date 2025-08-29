@@ -11,7 +11,6 @@ CONFIG_PACKAGE_kmod-virtio-blk=y
 CONFIG_PACKAGE_kmod-virtio-scsi=y
 CONFIG_PACKAGE_kmod-virtio-ring=y
 CONFIG_PACKAGE_kmod-virtio-pci=y
-CONFIG_PACKAGE_pbr=y
 CONFIG_PACKAGE_zerotier=y
 CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_wireguard-tools=y
@@ -21,7 +20,11 @@ CONFIG_PACKAGE_git=y
 CONFIG_PACKAGE_openssh-client=y
 CONFIG_PACKAGE_ca-bundle=y
 CONFIG_PACKAGE_vim=y
+CONFIG_PACKAGE_vim-runtime=y
 CONFIG_PACKAGE_less=y
 CONFIG_PACKAGE_bash=y
+CONFIG_PACKAGE_mwan3=y
+CONFIG_PACKAGE_ipset=y
+CONFIG_PACKAGE_adguardhome=y
 
 EOF
