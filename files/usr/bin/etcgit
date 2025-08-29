@@ -59,14 +59,23 @@ cmd_import() {
 
   # nuke current upperdir content (including dotfiles) and replace with clone
   mv "$TMP/.git" "$ETC/"
-  git -C "$ETC" reset --hard
-  git -C "$ETC" clean -df
   setup_git_config
+  git -C "$ETC" reset
+  echo "Imported configs into /etc from $REMOTE"
+
+  if [ -n "$(git -C "$ETC" status --porcelain 2>/dev/null || true)" ]; then
+    echo
+    echo "⚠ Uncommitted changes in /etc (branch: $branch)"
+    git -C "$ETC" status -sb 2>/dev/null | sed 's/^/   /'
+    # Show a concise diff summary (avoid flooding the terminal)
+    diffstat="$(etcgit --no-pager diff --stat 2>/dev/null || true)"
+    [ -n "$diffstat" ] && { echo; echo "$diffstat" | sed 's/^/   /'; }
+    echo "→ Review the diff and either etcgit commit or etcgit reset"
+  fi
 
   # cleanup
   rm -rf "$TMP"
 
-  echo "Imported configs into /etc from $REMOTE"
   echo "⚠️  Reboot is strongly recommended now so all services reload new configs."
 }
 
