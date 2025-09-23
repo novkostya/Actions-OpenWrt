@@ -16,6 +16,7 @@ CONFIG_PACKAGE_kmod-wireguard=y
 CONFIG_PACKAGE_wireguard-tools=y
 CONFIG_PACKAGE_kmod-amneziawg=y
 CONFIG_PACKAGE_amneziawg-tools=y
+CONFIG_PACKAGE_openvpn-openssl=y
 CONFIG_PACKAGE_git=y
 CONFIG_PACKAGE_openssh-client=y
 CONFIG_PACKAGE_ca-bundle=y
