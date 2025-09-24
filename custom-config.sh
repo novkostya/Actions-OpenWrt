@@ -27,5 +27,10 @@ CONFIG_PACKAGE_bash=y
 CONFIG_PACKAGE_mwan3=y
 CONFIG_PACKAGE_ipset=y
 CONFIG_PACKAGE_adguardhome=y
+CONFIG_PACKAGE_kmod-usb-net-ipheth=y
+CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
+CONFIG_PACKAGE_usbmuxd=y
+CONFIG_PACKAGE_libimobiledevice=y
+CONFIG_PACKAGE_usbutils=y
 
 EOF
