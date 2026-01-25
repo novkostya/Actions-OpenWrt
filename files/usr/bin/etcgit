@@ -9,6 +9,60 @@ ETC="/overlay/upper/etc"
 need_git() { command -v git >/dev/null 2>&1 || { echo "git not found"; exit 1; }; }
 ensure_dir() { [ -d "$ETC" ] || mkdir -p "$ETC"; }
 
+# overlayfs/VFS can get "stale" after massive working-tree mutations (reset/checkout/clean/etc),
+# causing a temporary mismatch between what's on disk and what processes see.
+# Best-effort flush: sync + drop dentries/inodes/pagecache.
+overlayfs_drop_caches() {
+  sync >/dev/null 2>&1 || true
+  if [ -w /proc/sys/vm/drop_caches ]; then
+    echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
+  fi
+}
+
+# Return 0 if we should flush caches after this git invocation
+needs_overlayfs_flush() {
+  cmd=""
+  stash_sub=""
+
+  # Find git subcommand: skip global options like --no-pager / -c / -C / etc.
+  for arg in "$@"; do
+    case "$arg" in
+      --) break ;;
+      -*) continue ;;
+      *)  cmd="$arg"; break ;;
+    esac
+  done
+
+  [ -n "$cmd" ] || return 1
+
+  case "$cmd" in
+    reset|checkout|switch|restore|clean|revert|cherry-pick|merge|rebase)
+      return 0
+      ;;
+    stash)
+      # Find stash subcommand (apply/pop rewrite worktree)
+      seen_stash=0
+      for arg in "$@"; do
+        case "$arg" in
+          --) break ;;
+          -*) continue ;;
+          stash) seen_stash=1; continue ;;
+          *)
+            if [ "$seen_stash" -eq 1 ]; then
+              stash_sub="$arg"
+              break
+            fi
+            ;;
+        esac
+      done
+      [ "$stash_sub" = "apply" ] || [ "$stash_sub" = "pop" ]
+      return $?
+      ;;
+  esac
+
+  return 1
+}
+
 setup_git_config() {
   git -C "$ETC" config user.name  >/dev/null || git -C "$ETC" config user.name "etcgit"
   git -C "$ETC" config user.email >/dev/null || git -C "$ETC" config user.email "root@openwrt"
@@ -61,11 +115,12 @@ cmd_import() {
   mv "$TMP/.git" "$ETC/"
   setup_git_config
   git -C "$ETC" reset
+  overlayfs_drop_caches
   echo "Imported configs into /etc from $REMOTE"
 
   if [ -n "$(git -C "$ETC" status --porcelain 2>/dev/null || true)" ]; then
     echo
-    echo "⚠ Uncommitted changes in /etc (branch: $branch)"
+    echo "⚠ Uncommitted changes in /etc"
     git -C "$ETC" status -sb 2>/dev/null | sed 's/^/   /'
     # Show a concise diff summary (avoid flooding the terminal)
     diffstat="$(etcgit --no-pager diff --stat 2>/dev/null || true)"
@@ -99,5 +154,11 @@ case "$1" in
   init) shift; cmd_init "$@";;
   import) shift; cmd_import "$@";;
   ""|help|-h|--help) usage;;
-  *) need_git; ensure_dir; git -C "$ETC" "$@";;
+  *)
+    need_git; ensure_dir
+    git -C "$ETC" "$@"
+    if needs_overlayfs_flush "$@"; then
+      overlayfs_drop_caches
+    fi
+    ;;
 esac
