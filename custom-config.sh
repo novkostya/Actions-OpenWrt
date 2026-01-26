@@ -32,5 +32,8 @@ CONFIG_PACKAGE_kmod-usb-net-cdc-ether=y
 CONFIG_PACKAGE_usbmuxd=y
 CONFIG_PACKAGE_libimobiledevice=y
 CONFIG_PACKAGE_usbutils=y
+CONFIG_PACKAGE_sing-box=y
+CONFIG_PACKAGE_kmod-nft-tproxy=y
+CONFIG_PACKAGE_kmod-nft-socket=y
 
 EOF
