@@ -35,5 +35,6 @@ CONFIG_PACKAGE_usbutils=y
 CONFIG_PACKAGE_sing-box=y
 CONFIG_PACKAGE_kmod-nft-tproxy=y
 CONFIG_PACKAGE_kmod-nft-socket=y
+CONFIG_PACKAGE_yq=y
 
 EOF
