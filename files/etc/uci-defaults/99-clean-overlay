@@ -1,1 +1,21 @@
-99-clean-overlay
+#!/bin/sh
+set -e
+
+BASE="/overlay/upper/etc"
+ROM_BASE="/rom/etc"
+
+[ -d "$BASE" ] || exit 0
+[ -d "$ROM_BASE" ] || exit 0
+
+find "$BASE" -type f | while read -r f; do
+    rel="${f#$BASE}"
+    rom="$ROM_BASE$rel"
+
+    if [ -f "$rom" ] && cmp -s "$f" "$rom"; then
+        rm -f -- "$f"
+    fi
+done
+
+find "$BASE" -type d -empty -delete
+
+exit 0
