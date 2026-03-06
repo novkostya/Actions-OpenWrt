@@ -37,5 +37,11 @@ CONFIG_PACKAGE_kmod-nft-tproxy=y
 CONFIG_PACKAGE_kmod-nft-socket=y
 CONFIG_PACKAGE_yq=y
 CONFIG_PACKAGE_qemu-ga=y
+CONFIG_PACKAGE_kmod-ixgbe=y
+CONFIG_PACKAGE_ixgbe-firmware=y
+CONFIG_PACKAGE_kmod-ice=y
+CONFIG_PACKAGE_ice-firmware=y
+CONFIG_PACKAGE_pciutils=y
+CONFIG_PACKAGE_ethtool=y
 
 EOF
