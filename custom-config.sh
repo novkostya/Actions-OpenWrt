@@ -43,5 +43,15 @@ CONFIG_PACKAGE_kmod-ice=y
 CONFIG_PACKAGE_ice-firmware=y
 CONFIG_PACKAGE_pciutils=y
 CONFIG_PACKAGE_ethtool=y
+CONFIG_PACKAGE_iw=y
+CONFIG_PACKAGE_iwinfo=y
+CONFIG_PACKAGE_wireless-regdb=y
+CONFIG_PACKAGE_wpad-mbedtls=y
+CONFIG_PACKAGE_kmod-mt76=y
+CONFIG_PACKAGE_kmod-mt76-connac=y
+CONFIG_PACKAGE_kmod-mt7921-common=y
+CONFIG_PACKAGE_kmod-mt7921e=y
+CONFIG_PACKAGE_mt7921bt-firmware=y
+CONFIG_PACKAGE_kmod-mac80211=y
 
 EOF
