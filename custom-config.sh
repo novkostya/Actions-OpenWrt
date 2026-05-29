@@ -44,7 +44,6 @@ CONFIG_PACKAGE_ice-firmware=y
 CONFIG_PACKAGE_pciutils=y
 CONFIG_PACKAGE_ethtool=y
 CONFIG_PACKAGE_iw=y
-CONFIG_PACKAGE_iwinfo=y
 CONFIG_PACKAGE_wireless-regdb=y
 CONFIG_PACKAGE_wpad-mbedtls=y
 CONFIG_PACKAGE_kmod-mt76=y
