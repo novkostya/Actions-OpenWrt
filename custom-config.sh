@@ -43,5 +43,8 @@ CONFIG_PACKAGE_kmod-ice=y
 CONFIG_PACKAGE_ice-firmware=y
 CONFIG_PACKAGE_pciutils=y
 CONFIG_PACKAGE_ethtool=y
+CONFIG_PACKAGE_tcpdump=y
+CONFIG_PACKAGE_haproxy=y
+CONFIG_PACKAGE_tailscale=y
 
 EOF
