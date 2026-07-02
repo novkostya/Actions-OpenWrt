@@ -22,6 +22,11 @@ on:
         required: false
         default: ''
         type: string
+      sing_box_sha256:
+        description: 'Optional: expected SHA256 of the sing-box .ipk. If set, the build fails on mismatch (tamper-evident pin). Leave blank to skip; the actual hash is printed in the log so you can pin it next time.'
+        required: false
+        default: ''
+        type: string
 
 env:
   REPO_URL: https://git.openwrt.org/openwrt/openwrt.git
@@ -94,6 +99,7 @@ jobs:
       if: github.event.inputs.sing_box_version != ''
       env:
         SB_VER: ${{ github.event.inputs.sing_box_version }}
+        SB_SHA256: ${{ github.event.inputs.sing_box_sha256 }}
       run: |
         set -euo pipefail
         TAG="$SB_VER"                 # release tag, keep leading v (e.g. v1.14.0-alpha.37)
@@ -102,6 +108,19 @@ jobs:
         echo "Downloading upstream sing-box: $URL"
         WORK="$(mktemp -d)"
         curl -fsSL -o "$WORK/sing-box.ipk" "$URL"
+        # Integrity check: always print the actual hash; enforce it only if a pin was supplied.
+        ACTUAL_SHA256="$(sha256sum "$WORK/sing-box.ipk" | cut -d' ' -f1)"
+        echo "Downloaded .ipk sha256: $ACTUAL_SHA256"
+        if [ -n "${SB_SHA256:-}" ]; then
+          EXPECTED_SHA256="$(printf '%s' "$SB_SHA256" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+          if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]; then
+            echo "::error::sing-box .ipk sha256 mismatch: expected $EXPECTED_SHA256, got $ACTUAL_SHA256"
+            exit 1
+          fi
+          echo "sha256 matches the pinned value."
+        else
+          echo "No sing_box_sha256 pin supplied; skipping enforcement (pin the hash above for a tamper-evident build)."
+        fi
         # An .ipk is a gzip'd outer tar holding control.tar.gz + data.tar.gz + debian-binary.
         # Extract only the binary from data.tar.gz; do not install the package.
         tar -xzf "$WORK/sing-box.ipk" -C "$WORK" data.tar.gz
