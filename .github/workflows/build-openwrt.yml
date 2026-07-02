@@ -17,6 +17,11 @@ on:
         required: true
         default: 'snapshot'
         type: string
+      sing_box_version:
+        description: 'Override /usr/bin/sing-box with an upstream SagerNet/sing-box release tag (e.g. v1.14.0-alpha.37). Leave blank to keep the OpenWrt package binary.'
+        required: false
+        default: ''
+        type: string
 
 env:
   REPO_URL: https://git.openwrt.org/openwrt/openwrt.git
@@ -84,6 +89,28 @@ jobs:
         $CUSTOM_PACKAGES_SH
         $CUSTOM_CONFIG_SH
         $PREBUILD_MISC_SH
+
+    - name: Override sing-box binary with upstream release
+      if: github.event.inputs.sing_box_version != ''
+      env:
+        SB_VER: ${{ github.event.inputs.sing_box_version }}
+      run: |
+        set -euo pipefail
+        TAG="$SB_VER"                 # release tag, keep leading v (e.g. v1.14.0-alpha.37)
+        VER="${TAG#v}"                # package version, strip leading v (e.g. 1.14.0-alpha.37)
+        URL="https://github.com/SagerNet/sing-box/releases/download/${TAG}/sing-box_${VER}_openwrt_x86_64.ipk"
+        echo "Downloading upstream sing-box: $URL"
+        WORK="$(mktemp -d)"
+        curl -fsSL -o "$WORK/sing-box.ipk" "$URL"
+        # An .ipk is a gzip'd outer tar holding control.tar.gz + data.tar.gz + debian-binary.
+        # Extract only the binary from data.tar.gz; do not install the package.
+        tar -xzf "$WORK/sing-box.ipk" -C "$WORK" data.tar.gz
+        tar -xzf "$WORK/data.tar.gz" -C "$WORK" ./usr/bin/sing-box
+        # Drop it into the image files overlay so it overrides the packaged /usr/bin/sing-box.
+        mkdir -p "$BUILD_ROOT/files/usr/bin"
+        install -m 0755 "$WORK/usr/bin/sing-box" "$BUILD_ROOT/files/usr/bin/sing-box"
+        echo "Custom sing-box staged into image overlay:"
+        "$BUILD_ROOT/files/usr/bin/sing-box" version
 
     - name: Start SSH via tmate
       uses: rdp-studio/ssh2actions@main
