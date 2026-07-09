@@ -46,5 +46,7 @@ CONFIG_PACKAGE_ethtool=y
 CONFIG_PACKAGE_tcpdump=y
 CONFIG_PACKAGE_haproxy=y
 CONFIG_PACKAGE_tailscale=y
+CONFIG_PACKAGE_kmod-nft-queue=y
+CONFIG_PACKAGE_kmod-nfnetlink-queue=y
 
 EOF
