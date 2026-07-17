@@ -9,9 +9,14 @@ ETC="/overlay/upper/etc"
 need_git() { command -v git >/dev/null 2>&1 || { echo "git not found"; exit 1; }; }
 ensure_dir() { [ -d "$ETC" ] || mkdir -p "$ETC"; }
 
-# overlayfs/VFS can get "stale" after massive working-tree mutations (reset/checkout/clean/etc),
-# causing a temporary mismatch between what's on disk and what processes see.
-# Best-effort flush: sync + drop dentries/inodes/pagecache.
+# overlayfs/VFS can go "stale" after working-tree mutations (reset/checkout/clean/pull/...),
+# so processes may briefly see a mismatch between what's on disk and the merged /etc.
+# Best-effort flush: sync + drop dentries/inodes/pagecache so the overlay re-reads the upperdir.
+#
+# NOTE: this is only a VFS cache-drop, not an overlayfs reconciliation. Because git operates on the
+# upperdir directly, it cannot create/remove overlay whiteouts or opaque markers: deleting a file
+# that also exists in /rom/etc merely unlinks the upper copy, so the read-only ROM default reappears
+# in the merged view. That class of drift is a design limitation a flush cannot fix (see README).
 overlayfs_drop_caches() {
   sync >/dev/null 2>&1 || true
   if [ -w /proc/sys/vm/drop_caches ]; then
@@ -19,15 +24,25 @@ overlayfs_drop_caches() {
   fi
 }
 
-# Return 0 if we should flush caches after this git invocation
+# Return 0 if we should flush caches after this git invocation.
+#
+# Strategy: flush after ANY subcommand that can touch the working tree -- i.e. everything except a
+# known-safe read-only / index-only / history-only set. drop_caches is cheap and idempotent, so
+# over-flushing is harmless, whereas *under*-flushing leaves the overlay stale. So we fail safe and
+# flush by default: any subcommand we don't explicitly recognise as safe (including new ones and
+# ones behind a mis-parsed option) still gets a flush.
 needs_overlayfs_flush() {
   cmd=""
-  stash_sub=""
+  skip_val=0
 
-  # Find git subcommand: skip global options like --no-pager / -c / -C / etc.
+  # Isolate the git subcommand, skipping global options *and* the separate-word value of options
+  # that take one (e.g. `-c core.fileMode=false`, `-C /dir`), which would otherwise be mistaken for
+  # the subcommand and let a real worktree mutation slip through unflushed.
   for arg in "$@"; do
+    if [ "$skip_val" -eq 1 ]; then skip_val=0; continue; fi
     case "$arg" in
       --) break ;;
+      -c|-C|--git-dir|--work-tree|--namespace|--exec-path) skip_val=1; continue ;;
       -*) continue ;;
       *)  cmd="$arg"; break ;;
     esac
@@ -36,31 +51,22 @@ needs_overlayfs_flush() {
   [ -n "$cmd" ] || return 1
 
   case "$cmd" in
-    reset|checkout|switch|restore|clean|revert|cherry-pick|merge|rebase)
+    # Read-only / index-only / history-only: these never rewrite the working tree, so no flush.
+    # (Keeps the interactive-login banner's git calls cheap.)
+    status|diff|log|show|reflog|shortlog|whatchanged|describe|blame|grep|\
+    rev-parse|rev-list|symbolic-ref|for-each-ref|show-ref|ls-files|ls-tree|ls-remote|\
+    cat-file|diff-tree|diff-index|diff-files|name-rev|var|version|help|\
+    config|remote|branch|tag|fetch|push|add|commit|fsck|gc|repack|prune|count-objects|\
+    verify-commit|verify-tag)
+      return 1
+      ;;
+    *)
+      # Everything else can write the working tree -- checkout, switch, restore, reset, clean,
+      # revert, cherry-pick, merge, rebase, pull, stash (any form), rm, mv, apply, am, read-tree,
+      # checkout-index, bisect, ... -- so flush.
       return 0
       ;;
-    stash)
-      # Find stash subcommand (apply/pop rewrite worktree)
-      seen_stash=0
-      for arg in "$@"; do
-        case "$arg" in
-          --) break ;;
-          -*) continue ;;
-          stash) seen_stash=1; continue ;;
-          *)
-            if [ "$seen_stash" -eq 1 ]; then
-              stash_sub="$arg"
-              break
-            fi
-            ;;
-        esac
-      done
-      [ "$stash_sub" = "apply" ] || [ "$stash_sub" = "pop" ]
-      return $?
-      ;;
   esac
-
-  return 1
 }
 
 setup_git_config() {
