@@ -20,12 +20,12 @@ on:
       sing_box_version:
         description: 'Override /usr/bin/sing-box with an upstream SagerNet/sing-box release tag (e.g. v1.14.0-alpha.37). Leave blank to keep the OpenWrt package binary.'
         required: false
-        default: ''
+        default: 'v1.14.0'
         type: string
       sing_box_sha256:
         description: 'Optional: expected SHA256 of the sing-box .ipk. If set, the build fails on mismatch (tamper-evident pin). Leave blank to skip; the actual hash is printed in the log so you can pin it next time.'
         required: false
-        default: ''
+        default: 'cc37787354f4d455766a62c881b8999c6998808203986d4ae341e14981a2c891'
         type: string
 
 env:
