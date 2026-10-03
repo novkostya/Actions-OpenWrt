@@ -51,19 +51,20 @@ needs_overlayfs_flush() {
   [ -n "$cmd" ] || return 1
 
   case "$cmd" in
-    # Read-only / index-only / history-only: these never rewrite the working tree, so no flush.
+    # Read-only: these write neither the working tree nor .git, so no flush.
     # (Keeps the interactive-login banner's git calls cheap.)
     status|diff|log|show|reflog|shortlog|whatchanged|describe|blame|grep|\
     rev-parse|rev-list|symbolic-ref|for-each-ref|show-ref|ls-files|ls-tree|ls-remote|\
     cat-file|diff-tree|diff-index|diff-files|name-rev|var|version|help|\
-    config|remote|branch|tag|fetch|push|add|commit|fsck|gc|repack|prune|count-objects|\
-    verify-commit|verify-tag)
+    fsck|count-objects|verify-commit|verify-tag)
       return 1
       ;;
     *)
-      # Everything else can write the working tree -- checkout, switch, restore, reset, clean,
-      # revert, cherry-pick, merge, rebase, pull, stash (any form), rm, mv, apply, am, read-tree,
-      # checkout-index, bisect, ... -- so flush.
+      # Everything else writes the working tree or .git -- checkout, reset, merge, stash, ... but
+      # also commit, add, fetch, push, branch, tag, config, gc: those rewrite refs, the index or
+      # config inside /etc/.git. Left unflushed, the merged /etc view keeps serving the old files,
+      # and sysupgrade's config backup (which reads /etc/.git through the overlay) captured a
+      # stale refs/heads/master once (2026-10-03). So flush.
       return 0
       ;;
   esac
