@@ -5,8 +5,8 @@
 # To bump: change the tag and the sha256 of the .ipk together.
 set -euo pipefail
 
-SB_TAG=v1.14.1
-SB_SHA256=421ff203e802b262f973f001574ef84ed7250d91a5a2d88e0c0fa9cd3fe8485c
+SB_TAG=v1.14.2
+SB_SHA256=acf5f1af8e6c763ab7391e117ed19986611ff00d1b79550db46a3e95b77f38ac
 
 URL="https://github.com/SagerNet/sing-box/releases/download/${SB_TAG}/sing-box_${SB_TAG#v}_openwrt_x86_64.ipk"
 WORK="$(mktemp -d)"
