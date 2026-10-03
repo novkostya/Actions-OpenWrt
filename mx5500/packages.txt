@@ -6,5 +6,7 @@ git
 less
 terminfo
 iputils-arping
+# ethtool: UDP GRO forwarding on the WAN port for Tailscale (etc/hotplug.d/iface/40-udp-gro-forwarding)
+ethtool
 -ppp
 -ppp-mod-pppoe
