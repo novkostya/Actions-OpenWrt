@@ -60,7 +60,9 @@ The same image + `/etc` repo approach for a Linksys MX5500 that serves Wi-Fi and
 backup router for the VM. It doesn't need a source build: [`mx5500/build.sh`](mx5500/build.sh) runs the
 official OpenWrt ImageBuilder with the extra packages in [`mx5500/packages.txt`](mx5500/packages.txt)
 (no LuCI), adds a slim sing-box built from a pinned upstream tag (QUIC only, for a backup Hysteria2
-Realms exit) and the overlay files shared with the VM image plus [`mx5500/files/`](mx5500/files).
+Realms exit), AmneziaWG from awg-openwrt and the overlay files shared with the VM image plus
+[`mx5500/files/`](mx5500/files). All versions and checksums are pinned in
+[`mx5500/versions.env`](mx5500/versions.env).
 It runs locally or via the manual **Build MX5500 AP** workflow, which publishes `mx5500_*` releases that
 are never marked latest, so `releases/latest` keeps pointing at the VM image.
 

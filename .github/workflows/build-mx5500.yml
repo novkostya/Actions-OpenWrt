@@ -2,25 +2,10 @@ name: Build MX5500 AP
 
 # Linksys MX5500 access point / VRRP backup router image (mx5500/build.sh): OpenWrt ImageBuilder,
 # extra packages from mx5500/packages.txt, a slim sing-box and the shared overlay files.
+# All versions are pinned in mx5500/versions.env (no inputs), so a release maps to one commit.
 # Manual only: the daily update checker's repository_dispatch is for the x86 VM image.
 on:
   workflow_dispatch:
-    inputs:
-      openwrt_version:
-        description: 'OpenWrt release'
-        required: true
-        default: '25.12.5'
-        type: string
-      singbox_tag:
-        description: 'sing-box tag'
-        required: true
-        default: 'v1.14.2'
-        type: string
-      singbox_commit:
-        description: 'Expected commit of that sing-box tag'
-        required: true
-        default: 'af6e64c3b69e6132ebaee0e1a3d24e93903f6709'
-        type: string
 
 jobs:
   build:
@@ -47,15 +32,15 @@ jobs:
 
     - name: Build
       env:
-        OPENWRT_VERSION: ${{ github.event.inputs.openwrt_version }}
-        SINGBOX_TAG: ${{ github.event.inputs.singbox_tag }}
-        SINGBOX_COMMIT: ${{ github.event.inputs.singbox_commit }}
         OUT_DIR: ${{ github.workspace }}/out
       run: ./mx5500/build.sh
 
     - name: Release tag
       id: tag
-      run: echo "release_tag=mx5500_${{ github.event.inputs.openwrt_version }}_$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+      run: |
+        . mx5500/versions.env
+        echo "openwrt_version=$OPENWRT_VERSION" >> $GITHUB_OUTPUT
+        echo "release_tag=mx5500_${OPENWRT_VERSION}_$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
 
     - name: Release notes
       run: |
@@ -65,7 +50,7 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
-        name: MX5500 AP ${{ github.event.inputs.openwrt_version }} (${{ steps.tag.outputs.release_tag }})
+        name: MX5500 AP ${{ steps.tag.outputs.openwrt_version }} (${{ steps.tag.outputs.release_tag }})
         body_path: out/RELEASE.md
         # keep releases/latest pointing at the x86 VM image (README / recreate script use it)
         make_latest: false

@@ -5,20 +5,14 @@
 # Output: $OUT_DIR with the sysupgrade/factory images, manifest, sha256sums and BUILDINFO.
 set -euo pipefail
 
-OPENWRT_VERSION=${OPENWRT_VERSION:-25.12.5}
 TARGET=qualcommax/ipq50xx
 PROFILE=linksys_mx5500
-SINGBOX_TAG=${SINGBOX_TAG:-v1.14.2}
-SINGBOX_COMMIT=${SINGBOX_COMMIT:-af6e64c3b69e6132ebaee0e1a3d24e93903f6709}
 # Only what the AP needs: Hysteria2/Realms (QUIC). Tailscale comes from the OpenWrt package instead.
-SINGBOX_BUILD_TAGS=${SINGBOX_BUILD_TAGS:-with_quic,badlinkname,tfogo_checklinkname0}
-# AmneziaWG (kmod + tools) for the AWG identity the AP takes over as VRRP MASTER. Not in the OpenWrt feeds:
-# prebuilt by github.com/Slava-Shchipunov/awg-openwrt per release/target; pinned by sha256 (update with the version).
-AWG_TAG=${AWG_TAG:-v$OPENWRT_VERSION}
-AWG_KMOD_SHA256=${AWG_KMOD_SHA256:-dd6b1e4be3c34eb0adee1a5d853fe2d6f2321b2c42a90d96d1c69d512022fe34}
-AWG_TOOLS_SHA256=${AWG_TOOLS_SHA256:-57502806a5a3f43f14199b2cfb6f3aa5fa338af09070da3f674832c5a3655da8}
+SINGBOX_BUILD_TAGS=with_quic,badlinkname,tfogo_checklinkname0
 
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
+# Versions and checksums: OPENWRT_VERSION, SINGBOX_TAG/COMMIT, AWG_TAG/*_SHA256
+. "$REPO_DIR/mx5500/versions.env"
 WORK_DIR=${WORK_DIR:-$REPO_DIR/.build-mx5500}
 OUT_DIR=${OUT_DIR:-$WORK_DIR/out}
 mkdir -p "$WORK_DIR" "$OUT_DIR"
