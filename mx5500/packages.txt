@@ -6,7 +6,11 @@ git
 less
 terminfo
 iputils-arping
-# ethtool: UDP GRO forwarding on the WAN port for Tailscale (etc/hotplug.d/iface/40-udp-gro-forwarding)
+# ethtool: UDP GRO forwarding on the WAN port for Tailscale (files/etc/hotplug.d/iface/40-udp-gro-forwarding, shared)
 ethtool
+# AmneziaWG for the AWG identity (awg_ad) the AP carries while it holds the VRRP address; added to the
+# ImageBuilder's local repository by build.sh (awg-openwrt release, pinned sha256)
+kmod-amneziawg
+amneziawg-tools
 -ppp
 -ppp-mod-pppoe

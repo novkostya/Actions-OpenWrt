@@ -12,6 +12,11 @@ SINGBOX_TAG=${SINGBOX_TAG:-v1.14.2}
 SINGBOX_COMMIT=${SINGBOX_COMMIT:-af6e64c3b69e6132ebaee0e1a3d24e93903f6709}
 # Only what the AP needs: Hysteria2/Realms (QUIC). Tailscale comes from the OpenWrt package instead.
 SINGBOX_BUILD_TAGS=${SINGBOX_BUILD_TAGS:-with_quic,badlinkname,tfogo_checklinkname0}
+# AmneziaWG (kmod + tools) for the AWG identity the AP takes over as VRRP MASTER. Not in the OpenWrt feeds:
+# prebuilt by github.com/Slava-Shchipunov/awg-openwrt per release/target; pinned by sha256 (update with the version).
+AWG_TAG=${AWG_TAG:-v$OPENWRT_VERSION}
+AWG_KMOD_SHA256=${AWG_KMOD_SHA256:-dd6b1e4be3c34eb0adee1a5d853fe2d6f2321b2c42a90d96d1c69d512022fe34}
+AWG_TOOLS_SHA256=${AWG_TOOLS_SHA256:-57502806a5a3f43f14199b2cfb6f3aa5fa338af09070da3f674832c5a3655da8}
 
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 WORK_DIR=${WORK_DIR:-$REPO_DIR/.build-mx5500}
@@ -39,6 +44,19 @@ if [ ! -d "$WORK_DIR/$IB_NAME" ]; then
     rm -f "$WORK_DIR/ib.tar.zst"
 fi
 
+echo "==> AmneziaWG packages (awg-openwrt $AWG_TAG) into the ImageBuilder's local repository"
+AWG_SUFFIX=${AWG_TAG}_aarch64_cortex-a53_${TARGET//\//_}.apk
+mkdir -p "$WORK_DIR/$IB_NAME/packages"
+for p in "kmod-amneziawg:$AWG_KMOD_SHA256" "amneziawg-tools:$AWG_TOOLS_SHA256"; do
+    f="$WORK_DIR/$IB_NAME/packages/${p%%:*}_$AWG_SUFFIX"
+    curl -fsSL -o "$f" "https://github.com/Slava-Shchipunov/awg-openwrt/releases/download/$AWG_TAG/${p%%:*}_$AWG_SUFFIX"
+    echo "${p#*:}  $f" | sha256sum -c -
+    # apk finds local packages by their canonical <name>-<version>.apk file name, not the release asset name
+    v=$("$WORK_DIR/$IB_NAME/staging_dir/host/bin/apk" adbdump "$f" | awk '$1 == "version:" {print $2; exit}')
+    mv -f "$f" "$WORK_DIR/$IB_NAME/packages/${p%%:*}-$v.apk"
+done
+rm -f "$WORK_DIR/$IB_NAME/packages/packages.adb"   # re-indexed by the image build
+
 echo "==> overlay files"
 FILES=$WORK_DIR/files
 rm -rf "$FILES"
@@ -57,6 +75,7 @@ make -C "$WORK_DIR/$IB_NAME" image PROFILE="$PROFILE" PACKAGES="$PACKAGES" FILES
     echo "openwrt: $OPENWRT_VERSION $TARGET $PROFILE"
     echo "packages: $PACKAGES"
     echo "sing-box: $SINGBOX_TAG ($SINGBOX_COMMIT), tags $SINGBOX_BUILD_TAGS, $(go version)"
+    echo "amneziawg: awg-openwrt $AWG_TAG (kmod $AWG_KMOD_SHA256, tools $AWG_TOOLS_SHA256)"
     echo "repo: $(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo unknown)"
 } > "$OUT_DIR/BUILDINFO"
 cat "$OUT_DIR/BUILDINFO"
