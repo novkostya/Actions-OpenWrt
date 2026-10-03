@@ -55,8 +55,9 @@ echo "==> overlay files"
 FILES=$WORK_DIR/files
 rm -rf "$FILES"
 mkdir -p "$FILES/usr/bin"
-# Shared with the x86 VM image: etcgit, its sysupgrade hook and login banner, clean-overlay.
-rsync -a "$REPO_DIR/files/" "$FILES/"
+# Shared with the x86 VM image: etcgit, its sysupgrade hook and login banner, clean-overlay, UDP GRO hook.
+# S99qemu-ga only makes sense in the VM (no qemu-ga on the AP).
+rsync -a --exclude etc/rc.d/S99qemu-ga "$REPO_DIR/files/" "$FILES/"
 rsync -a "$REPO_DIR/mx5500/files/" "$FILES/"
 install -m 0755 "$WORK_DIR/sing-box.bin" "$FILES/usr/bin/sing-box"
 
