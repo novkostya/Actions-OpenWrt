@@ -173,5 +173,7 @@ jobs:
       with:
         keep_latest: 5
         delete_tags: true
+        # only the x86 VM releases; the MX5500 workflow prunes its own (mx5500_*)
+        delete_tag_pattern: '^(v|SNAPSHOT_)'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

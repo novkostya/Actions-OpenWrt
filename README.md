@@ -54,6 +54,19 @@ qm start 100
 etcgit import git@github.com:<you>/<openwrt-config>.git
 ```
 
+## Second device: Linksys MX5500 access point
+
+The same image + `/etc` repo approach for a Linksys MX5500 that serves Wi-Fi and stands by as a VRRP
+backup router for the VM. It doesn't need a source build: [`mx5500/build.sh`](mx5500/build.sh) runs the
+official OpenWrt ImageBuilder with the extra packages in [`mx5500/packages.txt`](mx5500/packages.txt)
+(no LuCI), adds a slim sing-box built from a pinned upstream tag (QUIC only, for a backup Hysteria2
+Realms exit) and the overlay files shared with the VM image plus [`mx5500/files/`](mx5500/files).
+It runs locally or via the manual **Build MX5500 AP** workflow, which publishes `mx5500_*` releases that
+are never marked latest, so `releases/latest` keeps pointing at the VM image.
+
+Installing from a release: `sysupgrade` (keeps settings) with the `*-sysupgrade.bin`. On this device it
+writes the other firmware slot and boots it, so the previous image stays as a fallback.
+
 ## Credits
 
 Built on **[P3TERX/Actions-OpenWrt](https://github.com/P3TERX/Actions-OpenWrt)** — the "Building OpenWrt with

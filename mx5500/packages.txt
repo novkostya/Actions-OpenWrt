@@ -1,0 +1,10 @@
+# Extra packages for the Linksys MX5500 AP image, on top of the ImageBuilder defaults
+# (which already leave out LuCI). One per line; a leading "-" removes a default package.
+keepalived
+tailscale
+git
+less
+terminfo
+iputils-arping
+-ppp
+-ppp-mod-pppoe
