@@ -87,8 +87,9 @@ install -m 0755 "$WORK_DIR/sing-box.bin" "$FILES/usr/bin/sing-box"
 
 echo "==> image"
 PACKAGES=$(grep -v -E '^\s*(#|$)' "$DEVICE_DIR/packages.txt" | tr '\n' ' ')
+# Only the options the device sets: an empty ROOTFS_PARTSIZE= still changes the image build
 make -C "$WORK_DIR/$IB_NAME" image PROFILE="$PROFILE" PACKAGES="$PACKAGES" FILES="$FILES" BIN_DIR="$OUT_DIR" \
-    EXTRA_IMAGE_NAME="${EXTRA_IMAGE_NAME:-}" ROOTFS_PARTSIZE="${ROOTFS_PARTSIZE:-}"
+    ${EXTRA_IMAGE_NAME:+EXTRA_IMAGE_NAME="$EXTRA_IMAGE_NAME"} ${ROOTFS_PARTSIZE:+ROOTFS_PARTSIZE="$ROOTFS_PARTSIZE"}
 if ls "$OUT_DIR" | grep -F -- "$OPENWRT_VERSION"; then
     echo "the version is still in these file names"
     exit 1
