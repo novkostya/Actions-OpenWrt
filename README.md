@@ -1,5 +1,7 @@
 # Actions-OpenWrt — a rebuildable router
 
+> Moved to [novkostya/openwrt-builder](https://github.com/novkostya/openwrt-builder), which builds the images with the official OpenWrt ImageBuilder. This repository is archived.
+
 [![Build OpenWrt](https://github.com/novkostya/Actions-OpenWrt/actions/workflows/build-openwrt.yml/badge.svg)](https://github.com/novkostya/Actions-OpenWrt/actions/workflows/build-openwrt.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
