@@ -1,179 +1,68 @@
 name: Build OpenWrt
 
+# x86-64 router VM image (./build.sh x86): OpenWrt ImageBuilder, extra packages from x86/packages.txt,
+# the upstream sing-box build and the shared overlay files plus x86/files.
+# All versions are pinned in x86/versions.env (no inputs), so a release maps to one commit.
+# Releases come from the default branch only; a run on another branch uploads a test build as an artifact.
 on:
-  repository_dispatch:
   workflow_dispatch:
-    inputs:
-      ssh:
-        description: 'SSH connection to Actions'
-        required: true
-        default: 'false'
-        type: choice
-        options:
-        - "true"
-        - "false"
-      version:
-        description: 'OpenWrt version'
-        required: true
-        default: 'snapshot'
-        type: string
-
-env:
-  REPO_URL: https://git.openwrt.org/openwrt/openwrt.git
-  REPO_BRANCH: master
-  BUILD_ROOT: ${{ github.workspace }}/openwrt
-  DEPENDENCIES: ${{ github.workspace }}/dependencies-ubuntu.txt
-  CUSTOM_FEEDS_SH: ${{ github.workspace }}/custom-feeds.sh
-  CUSTOM_PACKAGES_SH: ${{ github.workspace }}/custom-packages.sh
-  CUSTOM_CONFIG_SH: ${{ github.workspace }}/custom-config.sh
-  PREBUILD_MISC_SH: ${{ github.workspace }}/prebuild-misc.sh
-  CUSTOM_SING_BOX_SH: ${{ github.workspace }}/custom-sing-box.sh
-  TZ: Asia/Shanghai
-  DEVICE_NAME: unknown
-  FILE_DATE: unknown
-  FIRMWARE: unknown
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
 
     steps:
-    - name: Initialization environment
-      env:
-        DEBIAN_FRONTEND: noninteractive
-      run: |
-        sudo apt-get -qq update && sudo apt-get -qq upgrade
-        sudo apt-get -qq install $(cat $DEPENDENCIES)
-        sudo apt-get -qq autoremove --purge
-        sudo apt-get -qq clean
-        sudo timedatectl set-timezone "$TZ"
-
-    - name: Maximize build disk space
-      uses: easimon/maximize-build-space@master
-      with:
-        remove-dotnet: true
-        remove-android: true
-        remove-haskell: true
-        remove-codeql: true
-        remove-docker-images: true
-
     - name: Checkout
       uses: actions/checkout@main
 
-    - name: Download the sources
-      run: git clone --branch $REPO_BRANCH $REPO_URL
-
-    - name: Auto select a specific code revision
-      id: autoselect
-      if: github.event.client_payload.version == 'stable'
-      run: |
-        cd $BUILD_ROOT && git checkout $(git tag --sort=-creatordate | head -n1)
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: Manual select a specific code revision
-      id: manualselect
-      if: github.event.inputs.version != null && github.event.inputs.version != 'snapshot'
-      run: |
-        cd $BUILD_ROOT && git checkout ${{ github.event.inputs.version }}
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: Load custom
-      run: |
-        chmod +x *.sh
-        $CUSTOM_FEEDS_SH
-        $BUILD_ROOT/scripts/feeds update -a && $BUILD_ROOT/scripts/feeds install -a
-        $CUSTOM_PACKAGES_SH
-        $CUSTOM_CONFIG_SH
-        $PREBUILD_MISC_SH
-        $CUSTOM_SING_BOX_SH
-
-    - name: Start SSH via tmate
-      uses: rdp-studio/ssh2actions@main
-      if: github.event.inputs.ssh == 'true'
-
-    - name: Build the firmware image
-      id: compile
-      run: |
-        cd $BUILD_ROOT && echo "$(($(nproc)+1)) thread compile"
-        IGNORE_ERRORS=m make -j$(($(nproc)+1)) defconfig download clean world || IGNORE_ERRORS=m make -j1 defconfig download clean world V=s
-        echo "status=success" >> $GITHUB_OUTPUT
-        grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-        [ -s DEVICE_NAME ] && echo "DEVICE_NAME=$(cat DEVICE_NAME)" >> $GITHUB_ENV
-        echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
-
-    - name: Check space usage
-      run: df -hT
-
-    - name: Upload bin directory
-      uses: actions/upload-artifact@main
-      if: steps.compile.outputs.status == 'success'
-      with:
-        name: OpenWrt_bin_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
-        path: ${{ env.BUILD_ROOT }}/bin
-
-    - name: Organize files
-      id: organize
-      run: |
-        cd $BUILD_ROOT/bin/targets/*/* && rm -rf packages
-        { echo '### SHA256SUMS'; echo '```txt'; cat sha256sums; echo '```'; } > $BUILD_ROOT/SHA256SUMS
-        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: Upload firmware directory
-      uses: actions/upload-artifact@main
-      if: steps.organize.outputs.status == 'success'
-      with:
-        name: OpenWrt_firmware_${{ env.DEVICE_NAME }}_${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE }}
-
-    - name: Generate stable Release Tag
-      id: stabletag
-      if: steps.autoselect.outputs.status == 'success' || steps.manualselect.outputs.status == 'success'
-      run: |
-        echo "release_tag=$(cd $BUILD_ROOT && git describe --tags --abbrev=0 --exact-match)_$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: Generate snapshot Release Tag
-      id: snapshottag 
-      if: github.event.inputs.version == 'snapshot'
-      run: |
-        echo "release_tag=SNAPSHOT_$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
-        echo "status=success" >> $GITHUB_OUTPUT
-
-    - name: Upload stable firmware to Release
-      uses: softprops/action-gh-release@master
-      if: steps.stabletag.outputs.status == 'success'
+    - name: ImageBuilder prerequisites
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ steps.stabletag.outputs.release_tag }}
-        files: ${{ env.FIRMWARE }}/*
-        body_path: ${{ env.BUILD_ROOT }}/SHA256SUMS
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get -qq install build-essential gawk gettext libncurses-dev python3 rsync unzip zstd file wget patch xz-utils
 
-    - name: Upload snapshot firmware to Release
+    - name: Build
+      run: ./build.sh x86
+
+    - name: Release tag
+      id: tag
+      run: |
+        . x86/versions.env
+        echo "release_tag=v${OPENWRT_VERSION}_$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+
+    - name: Release notes
+      run: |
+        { echo '```'; cat .build/x86/out/BUILDINFO; echo; cat .build/x86/out/sha256sums; echo '```'; } > .build/x86/RELEASE.md
+
+    - name: Upload test build
+      if: github.ref_name != github.event.repository.default_branch
+      uses: actions/upload-artifact@main
+      with:
+        name: x86_${{ steps.tag.outputs.release_tag }}
+        path: .build/x86/out
+        retention-days: 7
+
+    - name: Upload to Release
+      if: github.ref_name == github.event.repository.default_branch
       uses: softprops/action-gh-release@master
-      if: steps.snapshottag.outputs.status == 'success'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.snapshottag.outputs.release_tag }}
-        files: ${{ env.FIRMWARE }}/*
-        body_path: ${{ env.BUILD_ROOT }}/SHA256SUMS
+        tag_name: ${{ steps.tag.outputs.release_tag }}
+        target_commitish: ${{ github.sha }}
+        body_path: .build/x86/RELEASE.md
+        # releases/latest is this image: README / recreate script fetch
+        # releases/latest/download/openwrt-x86-64-generic-squashfs-combined-efi.img.gz
+        files: .build/x86/out/*
 
-    - name: Delete workflow runs
-      if: always()
-      uses: Mattraks/delete-workflow-runs@main
-      with:
-        retain_days: 30
-        keep_minimum_runs: 5
-
-    - name: Remove old Releases
-      if: always()
+    - name: Remove old releases
+      if: github.ref_name == github.event.repository.default_branch
       uses: dev-drprasad/delete-older-releases@master
       with:
         keep_latest: 5
         delete_tags: true
         # only the x86 VM releases; the MX5500 workflow prunes its own (mx5500_*)
-        delete_tag_pattern: '^(v|SNAPSHOT_)'
+        delete_tag_pattern: '^v'
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

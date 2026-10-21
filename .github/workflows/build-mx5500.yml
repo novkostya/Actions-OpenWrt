@@ -1,9 +1,9 @@
 name: Build MX5500 AP
 
-# Linksys MX5500 access point / VRRP backup router image (mx5500/build.sh): OpenWrt ImageBuilder,
-# extra packages from mx5500/packages.txt, a slim sing-box and the shared overlay files.
+# Linksys MX5500 access point / VRRP backup router image (./build.sh mx5500): OpenWrt ImageBuilder,
+# extra packages from mx5500/packages.txt, a slim sing-box and the shared overlay files plus mx5500/files.
 # All versions are pinned in mx5500/versions.env (no inputs), so a release maps to one commit.
-# Manual only: the daily update checker's repository_dispatch is for the x86 VM image.
+# Releases come from the default branch only; a run on another branch uploads a test build as an artifact.
 on:
   workflow_dispatch:
 
@@ -31,9 +31,7 @@ jobs:
         sudo apt-get -qq install build-essential gawk gettext libncurses-dev python3 rsync unzip zstd file wget patch xz-utils
 
     - name: Build
-      env:
-        OUT_DIR: ${{ github.workspace }}/out
-      run: ./mx5500/build.sh
+      run: ./build.sh mx5500
 
     - name: Release tag
       id: tag
@@ -44,24 +42,35 @@ jobs:
 
     - name: Release notes
       run: |
-        { echo '```'; cat out/BUILDINFO; echo; cat out/sha256sums; echo '```'; } > out/RELEASE.md
+        { echo '```'; cat .build/mx5500/out/BUILDINFO; echo; cat .build/mx5500/out/sha256sums; echo '```'; } > .build/mx5500/RELEASE.md
+
+    - name: Upload test build
+      if: github.ref_name != github.event.repository.default_branch
+      uses: actions/upload-artifact@main
+      with:
+        name: ${{ steps.tag.outputs.release_tag }}
+        path: .build/mx5500/out
+        retention-days: 7
 
     - name: Upload to Release
+      if: github.ref_name == github.event.repository.default_branch
       uses: softprops/action-gh-release@master
       with:
         tag_name: ${{ steps.tag.outputs.release_tag }}
+        target_commitish: ${{ github.sha }}
         name: MX5500 AP ${{ steps.tag.outputs.openwrt_version }} (${{ steps.tag.outputs.release_tag }})
-        body_path: out/RELEASE.md
+        body_path: .build/mx5500/RELEASE.md
         # keep releases/latest pointing at the x86 VM image (README / recreate script use it)
         make_latest: false
         files: |
-          out/*sysupgrade.bin
-          out/*factory.bin
-          out/*.manifest
-          out/sha256sums
-          out/BUILDINFO
+          .build/mx5500/out/*sysupgrade.bin
+          .build/mx5500/out/*factory.bin
+          .build/mx5500/out/*.manifest
+          .build/mx5500/out/sha256sums
+          .build/mx5500/out/BUILDINFO
 
     - name: Remove old MX5500 releases
+      if: github.ref_name == github.event.repository.default_branch
       uses: dev-drprasad/delete-older-releases@master
       with:
         keep_latest: 3

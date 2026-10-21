@@ -1,0 +1,39 @@
+# Extra packages for the x86 VM image, on top of the ImageBuilder defaults (which leave out LuCI).
+# One per line; a leading "-" removes a default package.
+# virtio drivers are built into the x86/64 kernel, no kmod-virtio* packages needed.
+zerotier
+kmod-wireguard
+wireguard-tools
+# AmneziaWG: added to the ImageBuilder's local repository by build.sh (awg-openwrt release, pinned sha256)
+kmod-amneziawg
+amneziawg-tools
+git
+openssh-client
+ca-bundle
+vim
+vim-runtime
+less
+bash
+adguardhome
+kmod-usb-net-ipheth
+kmod-usb-net-cdc-ether
+usbmuxd
+libimobiledevice
+usbutils
+# init script and UCI config; build.sh replaces its /usr/bin/sing-box with the upstream build
+sing-box
+kmod-nft-tproxy
+kmod-nft-socket
+yq
+# enabled by x86/files/etc/rc.d/S99qemu-ga
+qemu-ga
+kmod-igc
+kmod-ixgbe
+pciutils
+ethtool
+tcpdump
+haproxy
+tailscale
+kmod-nft-queue
+kmod-nfnetlink-queue
+keepalived
